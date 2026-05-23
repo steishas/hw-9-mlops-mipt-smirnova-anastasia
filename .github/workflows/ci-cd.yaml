@@ -25,7 +25,7 @@ jobs:
       - name: Lint DAGs
         run: python -m py_compile ${{ env.DAGS_FOLDER }}/*.py
       - name: Unit tests
-        run: pytest tests/
+        run: PYTHONPATH=. pytest tests/
 
   # 2. Валидация Terraform-кода
   terraform-check:
