@@ -40,7 +40,7 @@ jobs:
         run: terraform validate
 
   # 3. Полная демонстрация IaC (создание -> проверка -> удаление)
-  infrastructure-demo:      # ровно 2 пробела
+  infrastructure-demo:
     needs: terraform-check
     runs-on: ubuntu-latest
     steps:

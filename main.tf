@@ -13,7 +13,7 @@ provider "aws" {
   secret_key                  = "minioadmin"
   skip_credentials_validation = true
   skip_requesting_account_id  = true
-  s3_use_path_style           = true          # ← обязательно для MinIO
+  s3_use_path_style           = true
   endpoints {
     s3 = "http://localhost:9000"
   }
