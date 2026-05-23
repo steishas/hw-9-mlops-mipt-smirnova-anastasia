@@ -1,0 +1,81 @@
+name: ML Continuous Training CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DAGS_FOLDER: ./dags
+
+jobs:
+  # 1. Линтинг DAG'ов и юнит-тесты
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      - name: Lint DAGs
+        run: python -m py_compile ${{ env.DAGS_FOLDER }}/*.py
+      - name: Unit tests
+        run: pytest tests/
+
+  # 2. Валидация Terraform-кода
+  terraform-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.0"
+      - name: Terraform Init
+        run: terraform init
+      - name: Terraform Validate
+        run: terraform validate
+
+  # 3. Полная демонстрация IaC (создание -> проверка -> удаление)
+  infrastructure-demo:
+    needs: terraform-check
+    runs-on: ubuntu-latest
+    services:
+      localstack:
+        image: localstack/localstack:latest
+        ports:
+          - 4566:4566
+        env:
+          SERVICES: s3,iam
+          DEFAULT_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: fake
+          AWS_SECRET_ACCESS_KEY: fake
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.0"
+      - name: Terraform Init
+        run: terraform init
+      - name: Terraform Plan
+        env:
+          AWS_ACCESS_KEY_ID: fake
+          AWS_SECRET_ACCESS_KEY: fake
+        run: terraform plan -var="environment=demo"
+      - name: Terraform Apply
+        env:
+          AWS_ACCESS_KEY_ID: fake
+          AWS_SECRET_ACCESS_KEY: fake
+        run: terraform apply -auto-approve -var="environment=demo"
+      - name: Check created buckets
+        run: aws --endpoint-url=http://localhost:4566 s3 ls
+      - name: Terraform Destroy
+        if: always()          # удаляем даже при ошибке выше
+        env:
+          AWS_ACCESS_KEY_ID: fake
+          AWS_SECRET_ACCESS_KEY: fake
+        run: terraform destroy -auto-approve -var="environment=demo"

@@ -1,0 +1,8 @@
+services:
+  motoserver:
+    image: motoserver/moto:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - MOTO_PORT=4566
+    command: ["-H", "0.0.0.0", "-p", "4566"]

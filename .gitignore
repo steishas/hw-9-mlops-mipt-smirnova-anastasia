@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Виртуальное окружение
+venv/
+.venv/
+env/
+.env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints*
+.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Кеш
+.cache/
+*.log
+
+# Артефакты (генерируются при CI)
+model.joblib
+metrics.json
+requirements-frozen.txt
+
+.env
+logs/
+config/
+__pycache__/
+*.pyc
