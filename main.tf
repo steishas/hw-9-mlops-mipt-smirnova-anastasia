@@ -8,55 +8,23 @@ terraform {
 }
 
 provider "aws" {
-  region                      = var.aws_region
-  access_key                  = "fake"
-  secret_key                  = "fake"
+  region                      = "us-east-1"
+  access_key                  = "minioadmin"
+  secret_key                  = "minioadmin"
   skip_credentials_validation = true
   skip_requesting_account_id  = true
+  s3_use_path_style           = true          # ← обязательно для MinIO
   endpoints {
-    s3  = "http://localhost:4566"
-    iam = "http://localhost:4566"
+    s3 = "http://localhost:9000"
   }
 }
 
 resource "aws_s3_bucket" "checks_data" {
   bucket        = "retail-checks-${var.environment}"
-  force_destroy = true   # чтобы terraform destroy удалял даже непустые бакеты
+  force_destroy = true
 }
 
 resource "aws_s3_bucket" "model_registry" {
   bucket        = "ml-model-registry-${var.environment}"
   force_destroy = true
-}
-
-resource "aws_iam_user" "airflow_user" {
-  name = "airflow-ml-user-${var.environment}"
-}
-
-resource "aws_iam_policy" "s3_access" {
-  name = "airflow-s3-access-${var.environment}"
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:ListBucket"
-        ]
-        Resource = [
-          aws_s3_bucket.checks_data.arn,
-          "${aws_s3_bucket.checks_data.arn}/*",
-          aws_s3_bucket.model_registry.arn,
-          "${aws_s3_bucket.model_registry.arn}/*"
-        ]
-      }
-    ]
-  })
-}
-
-resource "aws_iam_user_policy_attachment" "attach_s3" {
-  user       = aws_iam_user.airflow_user.name
-  policy_arn = aws_iam_policy.s3_access.arn
 }

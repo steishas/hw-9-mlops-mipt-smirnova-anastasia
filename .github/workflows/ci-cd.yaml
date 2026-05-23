@@ -40,7 +40,7 @@ jobs:
         run: terraform validate
 
   # 3. Полная демонстрация IaC (создание -> проверка -> удаление)
-  infrastructure-demo:
+  infrastructure-demo:      # ровно 2 пробела
     needs: terraform-check
     runs-on: ubuntu-latest
     steps:
@@ -49,24 +49,22 @@ jobs:
         with:
           terraform_version: "1.8.0"
 
-      - name: Start LocalStack
+      - name: Start MinIO
         run: |
-          docker run -d --name localstack \
-            -p 4566:4566 \
-            -e SERVICES=s3,iam \
-            -e DEFAULT_REGION=us-east-1 \
-            -e AWS_ACCESS_KEY_ID=fake \
-            -e AWS_SECRET_ACCESS_KEY=fake \
-            localstack/localstack:3.5.0
+          docker run -d --name minio \
+            -p 9000:9000 -p 9001:9001 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            quay.io/minio/minio server /data --console-address ":9001"
 
-      - name: Wait for LocalStack
+      - name: Wait for MinIO
         run: |
           for i in $(seq 1 30); do
-            if curl -s http://localhost:4566/_localstack/health | grep '"s3":"available"'; then
-              echo "LocalStack готов"
+            if curl -s http://localhost:9000/minio/health/live; then
+              echo "MinIO готов"
               break
             fi
-            echo "Ожидание LocalStack..."
+            echo "Ожидание MinIO..."
             sleep 2
           done
 
@@ -75,26 +73,29 @@ jobs:
 
       - name: Terraform Plan
         env:
-          AWS_ACCESS_KEY_ID: fake
-          AWS_SECRET_ACCESS_KEY: fake
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
         run: terraform plan -var="environment=demo"
 
       - name: Terraform Apply
         env:
-          AWS_ACCESS_KEY_ID: fake
-          AWS_SECRET_ACCESS_KEY: fake
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
         run: terraform apply -auto-approve -var="environment=demo"
 
       - name: Check created buckets
-        run: aws --endpoint-url=http://localhost:4566 s3 ls
+        env:
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
+        run: aws --endpoint-url=http://localhost:9000 s3 ls
 
       - name: Terraform Destroy
         if: always()
         env:
-          AWS_ACCESS_KEY_ID: fake
-          AWS_SECRET_ACCESS_KEY: fake
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
         run: terraform destroy -auto-approve -var="environment=demo"
 
-      - name: Stop LocalStack
+      - name: Stop MinIO
         if: always()
-        run: docker rm -f localstack
+        run: docker rm -f minio
